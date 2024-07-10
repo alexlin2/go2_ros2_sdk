@@ -3,12 +3,14 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image, PointCloud2, CameraInfo
 from vision_msgs.msg import Detection2D, Detection2DArray, Detection3D, Detection3DArray
 
+import numpy as np
+import cv2
 from cv_bridge import CvBridge
 import PyKDL
 import yaml
 import os
 from ament_index_python.packages import get_package_share_directory
-from sensor_msgs_py.point_cloud2 import create_cloud, read_points, create_cloud_xyz32
+from sensor_msgs_py.point_cloud2 import read_points, create_cloud_xyz32
 
 import tf2_ros
 
@@ -25,7 +27,7 @@ class DetectImages(Node):
             10)
         self.lidar_subscription = self.create_subscription(
             PointCloud2,
-            '/point_cloud2',
+            '/robot0/point_cloud2',
             self.lidar_callback,
             10)
         self.model = YOLO('yolov8n.pt')
@@ -48,12 +50,12 @@ class DetectImages(Node):
             camera_info.p = data['projection_matrix']['data']
 
         self.camera_info = camera_info
+        self.image_topic_frame = "robot0/front_camera"
+
 
         self.camera_info_publisher = self.create_publisher(CameraInfo, 'camera_info', 10)
-
-        self.image_topic_frame = "front_camera"
-
-        self.detection_image_publisher = self.create_publisher(Image, 'detection_image', 10)
+        self.overlay_image_publisher = self.create_publisher(Image, 'overlay_image', 10)
+        #self.detection3d_publisher = self.create_publisher(Detection2DArray, 'detection2d', 10)
         self.transformed_pc_publisher = self.create_publisher(PointCloud2, 'transformed_pc', 10)
 
     def transform_to_kdl(self, t):
@@ -77,10 +79,11 @@ class DetectImages(Node):
         try:
             transform = self.tf_buffer.lookup_transform(self.image_topic_frame,
                                                         msg.header.frame_id,
-                                                        msg.header.stamp,
-                                                        rclpy.duration.Duration(seconds=100.0))
+                                                        rclpy.time.Time(),
+                                                        rclpy.duration.Duration(seconds=0.5))
             transformed_pc = self.do_transform_cloud(msg, transform)
             self.transformed_pc_publisher.publish(transformed_pc)
+
         except (tf2_ros.LookupException,
                 tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:
@@ -88,10 +91,10 @@ class DetectImages(Node):
 
     def image_callback(self, msg):
         cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
-        results = self.model.track(cv_image, persist=True, verbose=False)
+        results = self.model.track(cv_image, persist=True, verbose=True)
         annotated_frame = results[0].plot()
         img_msg = self.bridge.cv2_to_imgmsg(annotated_frame, 'bgr8')
-        self.detection_image_publisher.publish(img_msg)
+        self.overlay_image_publisher.publish(img_msg)
         self.camera_info_publisher.publish(self.camera_info)
 
 
