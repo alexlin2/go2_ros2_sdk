@@ -24,7 +24,8 @@ setup(
     entry_points={
         'console_scripts': [
             'detect_image = go2_detection.detect_image:main',
-            'pc_to_depth = go2_detection.pc_to_depth:main'
+            'pc_to_depth = go2_detection.pc_to_depth:main',
+            'csi_camera_pub = go2_detection.csi_camera_pub:main',
         ],
     },
 )

@@ -71,7 +71,7 @@ class RobotBaseNode(Node):
             'ROBOT_TOKEN', os.getenv('GO2_TOKEN', '')))
         self.declare_parameter('conn_type', os.getenv(
             'CONN_TYPE', os.getenv('CONN_TYPE', '')))
-        self.declare_parameter('enable_video', True)
+        self.declare_parameter('enable_video', False)
         self.declare_parameter('decode_lidar', True)
         self.declare_parameter('publish_raw_voxel', False)
 
